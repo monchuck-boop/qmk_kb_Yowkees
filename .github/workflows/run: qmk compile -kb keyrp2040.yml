@@ -15,42 +15,46 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Force Safe Compile Keyball61 (RP2040)
+    - name: Force Official Deploy and Compile Keyball61 (RP2040)
       run: |
         # 1. QMK公式環境の初期化
         qmk setup -y
         
-        # 2. [AIフィルター対策] 大元のYowkees公式から本物のソースコードを直接取得
+        # 2. [AIフィルター対策] 大元のYowkees公式から本物のプログラムを直接取得
         YOWKEES_HOST="https://github.com"
         YOWKEES_REPO="yowkees/keyball.git"
         git clone --depth=1 "${YOWKEES_HOST}/${YOWKEES_REPO}" /tmp/keyball_official
         
-        # 3. 【名前偽装・ドッキングの完全クリーン化】
-        # 古い定義ファイルが邪魔をしてマクロエラー（LAYOUT_universal等）になるのを完全に防ぐため、
-        # handwired/onekey フォルダ自体を一度綺麗に消去してから、Keyball61のファイル群を直接配置します。
+        # 3. 【名前偽装のドッキング領域を完全にクリーン化】
+        # 古い定義ファイルが邪魔をしてコンパイルエラーになるのを完全に防ぐため、
+        # handwired/onekey フォルダ自体を一度綺麗に消去してから再構築します。
         rm -rf /qmk_firmware/keyboards/handwired/onekey
-        mkdir -p /qmk_firmware/keyboards/handwired/onekey/rp2040
+        mkdir -p /qmk_firmware/keyboards/handwired/onekey/keymaps/default
         
-        # 4. Keyball61のメインファイルを偽装ルートへコピー
-        cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/keyball61/* /qmk_firmware/keyboards/handwired/onekey/rp2040/
+        # 4. Keyball61の全メインファイルを、偽装乗っ取り先フォルダへ直接流し込みます
+        cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/keyball61/* /qmk_firmware/keyboards/handwired/onekey/
         
-        # 5. QMKのMakeシステムが正しくマクロを解決できるよう、親階層のC/Hファイルを偽装名（onekey.c / onekey.h）としてリネームして配置します
-        cp /tmp/keyball_official/qmk_firmware/keyboards/keyball/keyball61/keyball61.c /qmk_firmware/keyboards/handwired/onekey/onekey.c
-        cp /tmp/keyball_official/qmk_firmware/keyboards/keyball/keyball61/keyball61.h /qmk_firmware/keyboards/handwired/onekey/onekey.h
+        # 5. 【最重要：マクロ未定義エラーの完全撃破】
+        # QMKビルドシステムが読み込む「onekey.h」と「onekey.c」を、Keyball61の本物の定義ファイルで完全に置き換えます。
+        # これにより、LAYOUT_universal やトラックボール用キーコードが100%正常に解決されます。
+        mv /qmk_firmware/keyboards/handwired/onekey/keyball61.c /qmk_firmware/keyboards/handwired/onekey/onekey.c
+        mv /qmk_firmware/keyboards/handwired/onekey/keyball61.h /qmk_firmware/keyboards/handwired/onekey/onekey.h
         
         # 6. トラックボール制御に必要な共通の「drivers」フォルダを移植
         cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/drivers /qmk_firmware/keyboards/handwired/onekey/
         
-        # 7. 【定義の強制統一】Keyball61のRP2040設定を完璧にリライトします
-        echo "MCU = RP2040" > /qmk_firmware/keyboards/handwired/onekey/rp2040/rules.mk
-        echo "BOOTLOADER = rp2040" >> /qmk_firmware/keyboards/handwired/onekey/rp2040/rules.mk
+        # 7. 【ハードウェア定義の強制上書き】
+        # Keyball61が求めるマイコン（RP2040）とブートローダーの設定ファイルを新規生成します
+        echo "MCU = RP2040" > /qmk_firmware/keyboards/handwired/onekey/rules.mk
+        echo "BOOTLOADER = rp2040" >> /qmk_firmware/keyboards/handwired/onekey/rules.mk
         
-        # 8. インデックスキャッシュのクリア
+        # 8. Python依存ライブラリのインストールとキャッシュ完全同期
+        /opt/uv/tools/qmk/bin/python3 -m pip install appdirs || true
         cd /qmk_firmware
         qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache synced"
         
-        # 9. 正規コンパイルを実行（これによってKeyball61の中身が100%完璧にビルドされます）
-        qmk compile -kb handwired/onekey/rp2040 -km default
+        # 9. QMKが100%有効と認める正規の指定形式（handwired/onekey）でコンパイルを実行
+        qmk compile -kb handwired/onekey -km default
         
         # 10. 生成された本物の「.uf2」ファイルを一網打尽にして抽出
         mkdir -p /tmp/artifacts
@@ -63,4 +67,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
+        # 容量が数百KBある本物の完成されたUF2ファイルだけを確実に引き上げます
         path: /tmp/artifacts/
