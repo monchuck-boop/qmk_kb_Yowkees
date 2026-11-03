@@ -28,22 +28,23 @@ jobs:
 
     - name: Deploy Keyball Source to QMK
       run: |
-        # QMK公式の keyboards 直下に keyball61 フォルダとして直接配置します
-        mkdir -p /home/runner/qmk_firmware/keyboards/keyball61
+        # QMK側の keyboards/keyball ディレクトリを綺麗に作成します
+        mkdir -p /home/runner/qmk_firmware/keyboards/keyball
         
-        if [ -d "keyboards/keyball/keyball61" ]; then
-          cp -R keyboards/keyball/keyball61/* /home/runner/qmk_firmware/keyboards/keyball61/
-        elif [ -d "keyball61" ]; then
-          cp -R keyball61/* /home/runner/qmk_firmware/keyboards/keyball61/
+        # あなたのリポジトリにある keyball61 などのフォルダを、QMKの keyboards/keyball/ の中へ正確に配置します
+        if [ -d "keyball61" ]; then
+          cp -R keyball61 /home/runner/qmk_firmware/keyboards/keyball/
         else
-          cp -R * /home/runner/qmk_firmware/keyboards/keyball61/
+          # 万が一ルート直下がソースコードだった場合のフォールバック
+          mkdir -p /home/runner/qmk_firmware/keyboards/keyball/keyball61
+          cp -R * /home/runner/qmk_firmware/keyboards/keyball/keyball61/
         fi
 
     - name: Compile Keyball61 (RP2040)
       run: |
         cd /home/runner/qmk_firmware
-        # キーボード名を keyball61 に変更してビルドを実行します
-        qmk compile -kb keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
+        # QMKが正しく認識できるキーボード指定に戻してビルドします
+        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
