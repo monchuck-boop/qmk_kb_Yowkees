@@ -26,7 +26,6 @@ jobs:
         git clone --depth=1 "${YOWKEES_HOST}/${YOWKEES_REPO}" /tmp/keyball_official
         
         # 3. 親フォルダ（共通ドライバー含む）ごとQMK公式キーボードディレクトリへ完璧に移植
-        # 本来の正しいネスト階層（/qmk_firmware/keyboards/keyball）に完全配置します
         mkdir -p /qmk_firmware/keyboards/
         cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball /qmk_firmware/keyboards/
         
@@ -34,11 +33,9 @@ jobs:
         /opt/uv/tools/qmk/bin/python3 -m pip install -r /qmk_firmware/requirements.txt || true
         /opt/uv/tools/qmk/bin/python3 -m pip install appdirs || true
         
-        # 5. 【最重要】QMK CLIツールのフォルダ審査バグを完全に無視させるため、
-        # QMKのビルドコアである「make」システムを直接呼び出してコンパイルを強制起動します。
-        # 親階層の共通ルールも全て揃っているため、「No rule to make target」は絶対に起きません。
+        # 5. 【最重要】末尾に「:uf2」を追加し、中間bin群から「.uf2」ファイルへの完全自動変換・結合を強制実行します
         cd /qmk_firmware
-        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040 -j$(nproc)
+        make keyball/keyball61:default:uf2 MCU=RP2040 BOOTLOADER=rp2040 -j$(nproc)
         
         # 6. 生成された本物の「.uf2」ファイルを一網打尽にして回収用フォルダに集約します
         mkdir -p /tmp/artifacts
