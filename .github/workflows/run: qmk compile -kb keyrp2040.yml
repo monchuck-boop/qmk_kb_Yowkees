@@ -10,48 +10,31 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest
+    container: qmkfm/qmk_cli:latest  # QMK公式の最新環境を使用
     steps:
-    - name: Checkout repository
+    - name: Checkout repository from main branch
       uses: actions/checkout@v4
+      with:
+        ref: main  # 確実にinfo.jsonが存在する「main」ブランチを強制的に指定して取得します
 
     - name: Compile Keyball61 (RP2040)
       run: |
-        # QMK環境の初期化
+        # QMK公式環境をセットアップ
         qmk setup -y
         
-        echo "=== [1] あなたのリポジトリの構造を検査 ==="
-        ls -la
-        
-        echo "=== [2] QMKへの強制的・網羅的なソース配置 ==="
-        # フォルダ構造のダブりを完全に防ぐため、想定されるすべての配置パターンを網羅します
+        # QMK側に keyboards/keyball/keyball61 ディレクトリを作成します
         mkdir -p /qmk_firmware/keyboards/keyball/keyball61
-        mkdir -p /qmk_firmware/keyboards/keyball61
         
-        # リポジトリ内の『すべてのファイル』からKeyball61の設定（info.jsonなど）を探して流し込みます
-        if [ -d "keyball/keyball61" ]; then
-          cp -R keyball/keyball61/. /qmk_firmware/keyboards/keyball/keyball61/
-          cp -R keyball/keyball61/. /qmk_firmware/keyboards/keyball61/
-        elif [ -d "keyball61" ]; then
-          cp -R keyball61/. /qmk_firmware/keyboards/keyball/keyball61/
-          cp -R keyball61/. /qmk_firmware/keyboards/keyball61/
-        else
-          # ルート直下に直接散らばっている場合
-          find . -maxdepth 1 -not -name '.' -not -name 'qmk_firmware' -not -name '.git' -not -name '.github' -exec cp -R {} /qmk_firmware/keyboards/keyball/keyball61/ \;
-          find . -maxdepth 1 -not -name '.' -not -name 'qmk_firmware' -not -name '.git' -not -name '.github' -exec cp -R {} /qmk_firmware/keyboards/keyball61/ \;
-        fi
+        # mainブランチから取得した keyball61 フォルダの全ファイルを、QMK内の正しい位置へ確実にコピーします
+        cp -R keyball61/. /qmk_firmware/keyboards/keyball/keyball61/
         
-        echo "=== [3] コピー後のQMK側フォルダ構造を検証 ==="
-        echo "--- keyboards/keyball/keyball61 の中身 ---"
-        ls -la /qmk_firmware/keyboards/keyball/keyball61 || echo "Not found"
-        echo "--- keyboards/keyball61 の中身 ---"
-        ls -la /qmk_firmware/keyboards/keyball61 || echo "Not found"
+        # コピーが正しく行われたかログで確認します（info.json等が表示されます）
+        echo "=== コピー後のQMK側フォルダ構造 ==="
+        ls -la /qmk_firmware/keyboards/keyball/keyball61/
         
-        echo "=== [4] コンパイルの実行 ==="
+        # ProMicro RP2040用に完璧なビルドコマンドを実行します
         cd /qmk_firmware
-        # どちらの名前が正解でも通るように順番に試行します
-        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040 || \
-        qmk compile -kb keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
+        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
