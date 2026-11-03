@@ -10,30 +10,40 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest  # QMK公式の最新ビルド環境を使用
+    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナを使用
     steps:
     - name: Checkout repository from main branch
       uses: actions/checkout@v4
       with:
-        ref: main  # キャッシュを無視して、確実にinfo.jsonが存在する「main」ブランチを絶対指定で取得します
+        ref: main  # info.jsonが存在する「main」ブランチを固定で取得
 
-    - name: Force Overwrite and Compile Keyball61 (RP2040)
+    - name: Force Smart Deploy and Compile Keyball61 (RP2040)
       run: |
-        # QMK公式の環境を確実に初期化
+        # QMK公式環境を初期化
         qmk setup -y
         
-        # QMKの keyboards 配下に直接 keyball ディレクトリを作成
-        mkdir -p /qmk_firmware/keyboards/keyball
+        echo "=== [1] 本物の設定ファイル(info.json)をリポジトリ内から全自動探索 ==="
+        # リポジトリ内の全階層から、本物の keyball61 (info.jsonがあるフォルダ) をLinuxが直接探し出します
+        REAL_PATH=$(find . -type f -name "info.json" | grep "keyball61" | head -n 1 | xargs dirname)
         
-        # mainブランチから読み込んだ本物のプログラム構造（keyballフォルダ）を、
-        # QMKの keyboards/ 直下へ完全に重なるように丸ごと強制コピーします
-        cp -R keyball/* /qmk_firmware/keyboards/keyball/
+        if [ -z "$REAL_PATH" ]; then
+          echo "警告: keyball61フォルダ内にinfo.jsonが見つかりません。ルートから再探索します。"
+          REAL_PATH=$(find . -type f -name "info.json" | head -n 1 | xargs dirname)
+        fi
         
-        # コピーが完全に成功し、info.jsonが配置されたことをログで証明します
-        echo "=== 配置完了後の QMK内部 keyball61 の本当のファイル構造 ==="
+        echo "発見した本物のソースコードの場所: $REAL_PATH"
+        
+        echo "=== [2] QMK公式環境へ完璧にドッキング ==="
+        # QMK側のキーボード用絶対パスを作成
+        mkdir -p /qmk_firmware/keyboards/keyball/keyball61
+        
+        # 見つかった本物のプログラムソース（info.json、config.h、keymaps等）を隙間なくコピー
+        cp -R ${REAL_PATH}/. /qmk_firmware/keyboards/keyball/keyball61/
+        
+        echo "=== [3] コピー完了後のQMK内部のファイル構造チェック ==="
         ls -la /qmk_firmware/keyboards/keyball/keyball61/
         
-        # ProMicro RP2040用に完璧なビルドを実行します
+        echo "=== [4] ProMicro RP2040用コンパイル実行 ==="
         cd /qmk_firmware
         qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
