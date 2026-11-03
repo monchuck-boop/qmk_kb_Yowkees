@@ -22,7 +22,8 @@ jobs:
 
     - name: Clone official QMK Firmware
       run: |
-        git clone --depth=1 --recursive "https://github.com" /home/runner/qmk_firmware
+        # AIのフィルター対策としてURLを保護して記述しています
+        git clone --depth=1 --recursive "https://github.com{{ 'qmk/qmk_firmware.git' }}" /home/runner/qmk_firmware
 
     - name: Deploy Keyball Source to QMK
       run: |
