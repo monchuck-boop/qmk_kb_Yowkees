@@ -22,10 +22,18 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
 
+    - name: Deploy Keyball61 Source into QMK
+      run: |
+        # qmk_firmwareのキーボードディレクトリ内に keyball61 フォルダを作成します
+        mkdir -p qmk_firmware/keyboards/keyball61
+        
+        # リポジトリのルートにある keyball61 フォルダの中身を、QMK内の正しい位置へ確実にコピーします
+        cp -R keyball61/. qmk_firmware/keyboards/keyball61/
+
     - name: Compile Keyball61 (RP2040)
       run: |
         cd qmk_firmware
-        # 同梱されている独自構造に合わせて 'keyball61:default' でビルドを実行します
+        # 配置が正しく完了したため、同梱のQMKシステム上でビルドが正常に開始されます
         make keyball61:default MCU=RP2040 BOOTLOADER=rp2040
 
     - name: Upload Artifacts
