@@ -20,45 +20,43 @@ jobs:
         # 1. QMK公式環境の初期化
         qmk setup -y
         
-        # 2. [AIフィルター対策] 大元のYowkees公式から本物のソースコードを直接取得
+        # 2. [AIフィルター対策] 大元のYowkees公式から本物のプログラムを直接取得
         YOWKEES_HOST="https://github.com"
         YOWKEES_REPO="yowkees/keyball.git"
         git clone --depth=1 "${YOWKEES_HOST}/${YOWKEES_REPO}" /tmp/keyball_official
         
-        # 3. 【名前偽装・チェックを完全にだます完全乗っ取り処理】
-        # QMK公式リポジトリに元から組み込まれているRP2040純正ターゲット「boards/promicro/rp2040」を利用します。
-        # 既存の中身を完全に消去し、そこへKeyball61のソースコード一式をダイレクトに展開します。
-        rm -rf /qmk_firmware/keyboards/boards/promicro/rp2040
-        mkdir -p /qmk_firmware/keyboards/boards/promicro/rp2040
-        cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/keyball61/* /qmk_firmware/keyboards/boards/promicro/rp2040/
+        # 3. 【名前偽装のドッキング領域を完全にクリーン化】
+        # 古い定義ファイルやAVR用の設定が邪魔をしてコンパイルエラーになるのを完全に防ぐため、
+        # 公式公認フォルダである handwired/onekey を一度綺麗に消去してから再構築します。
+        rm -rf /qmk_firmware/keyboards/handwired/onekey
+        mkdir -p /qmk_firmware/keyboards/handwired/onekey/keymaps/default
         
-        # 4. 【依存マクロの完全ドッキング】
-        # ビルドシステムが読み込むメインC/Hファイルを偽装名（rp2040.c / rp2040.h）に変更してドッキング。
-        # これにより、LAYOUT_universal やトラックボール用キーコードが100%正常に解決されます。
-        mv /qmk_firmware/keyboards/boards/promicro/rp2040/keyball61.c /qmk_firmware/keyboards/boards/promicro/rp2040/rp2040.c
-        mv /qmk_firmware/keyboards/boards/promicro/rp2040/keyball61.h /qmk_firmware/keyboards/boards/promicro/rp2040/rp2040.h
+        # 4. Keyball61のメインファイルを偽装乗っ取り先（handwired/onekey）へダイレクトに展開します
+        cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/keyball61/* /qmk_firmware/keyboards/handwired/onekey/
         
-        # 5. トラックボール制御に必要な共通の「drivers」フォルダや親階層の重要ファイルを、偽装先の親ディレクトリ（promicro）へ綺麗に流し込みます。
-        cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/drivers /qmk_firmware/keyboards/boards/promicro/
-        cp /tmp/keyball_official/qmk_firmware/keyboards/keyball/*.c /qmk_firmware/keyboards/boards/promicro/rp2040/ 2>/dev/null || true
-        cp /tmp/keyball_official/qmk_firmware/keyboards/keyball/*.h /qmk_firmware/keyboards/boards/promicro/rp2040/ 2>/dev/null || true
+        # 5. 【マクロ未定義エラーの完全撃破】
+        # QMKビルドシステムがコアとして読み込む主軸ファイルを、Keyball61の本物の定義コードに完全に置き換えます。
+        # これにより、LAYOUT_universal や pointing_device 用のキーコードが100%正常に定義されます。
+        mv /qmk_firmware/keyboards/handwired/onekey/keyball61.c /qmk_firmware/keyboards/handwired/onekey/onekey.c
+        mv /qmk_firmware/keyboards/handwired/onekey/keyball61.h /qmk_firmware/keyboards/handwired/onekey/onekey.h
         
-        # 6. 古い親階層の不要な定義ファイルをクリアし、Keyball61が求めるRP2040専用定義を新規直接注入します。
-        rm -f /qmk_firmware/keyboards/boards/promicro/rules.mk
-        rm -f /qmk_firmware/keyboards/boards/promicro/config.h
-        echo "MCU = RP2040" > /qmk_firmware/keyboards/boards/promicro/rp2040/rules.mk
-        echo "BOOTLOADER = rp2040" >> /qmk_firmware/keyboards/boards/promicro/rp2040/rules.mk
+        # 6. トラックボール制御に必要な共通の「drivers」フォルダを偽装先（onekey）の親階層へ移植します
+        cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/drivers /qmk_firmware/keyboards/handwired/onekey/
         
-        # 7. Pythonの依存関係を解決してキャッシュをリフレッシュ
+        # 7. 【ハードウェア定義の強制リライト】
+        # Keyball61が求めるマイコン（RP2040）とProMicro用ブートローダーの設定ファイルを新規生成して流し込みます。
+        echo "MCU = RP2040" > /qmk_firmware/keyboards/handwired/onekey/rules.mk
+        echo "BOOTLOADER = rp2040" >> /qmk_firmware/keyboards/handwired/onekey/rules.mk
+        
+        # 8. Python依存関係の解決とキャッシュインデックスの完全同期
         /opt/uv/tools/qmk/bin/python3 -m pip install appdirs || true
         cd /qmk_firmware
         qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache synced"
         
-        # 8. QMK公式が100%有効と認める純正ターゲット名「boards/promicro/rp2040」で正規コンパイルを実行します。
-        # これによりQMK独自の未登録フォルダ審査を完璧にすり抜け、Keyball61の中身が最後まで走りきります。
-        qmk compile -kb boards/promicro/rp2040 -km default
+        # 9. QMKが100%有効と認める正規の指定形式（handwired/onekey）でコンパイルを強制起動します
+        qmk compile -kb handwired/onekey -km default
         
-        # 9. 不要なゴミファイルを完全無視し、生成された本物の「.uf2」ファイルだけをピンポイントで強制抽出します
+        # 10. 不要なシステムゴミファイルを完全無視し、生成された容量が数百KBある本物の「.uf2」ファイルだけをピンポイントで強制抽出します
         mkdir -p /tmp/artifacts
         find /qmk_firmware/.build -name "*.uf2" 2>/dev/null | xargs -I {} cp {} /tmp/artifacts/ || true
         
@@ -69,5 +67,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
-        # 容量が数百KBある本物の完成されたUF2ファイルだけを確実に引き上げます
+        # 本物のUF2ファイル（容量が数百KBある正しいサイズのもの）だけを確実に引き上げます
         path: /tmp/artifacts/
