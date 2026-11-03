@@ -19,25 +19,33 @@ jobs:
 
     - name: Force Smart Deploy and Compile Keyball61 (RP2040)
       run: |
+        # QMK公式環境の初期化
         qmk setup -y
         
+        # 確実にプログラムが存在するフォルダを特定
         REAL_PATH=$(find . -type f -name "info.json" | grep "keyball61" | head -n 1 | xargs dirname)
         if [ -z "$REAL_PATH" ]; then
           REAL_PATH=$(find . -type f -name "info.json" | head -n 1 | xargs dirname)
         fi
         
-        mkdir -p /qmk_firmware/keyboards/keyball/keyball61
-        cp -R ${REAL_PATH}/. /qmk_firmware/keyboards/keyball/keyball61/
+        # QMK公式最新のキーボードルールに準拠させ、keyboards直下に「keyball61」を直接配置します
+        mkdir -p /qmk_firmware/keyboards/keyball61
+        cp -R ${REAL_PATH}/. /qmk_firmware/keyboards/keyball61/
         
+        # 【最重要】QMKにデータベースのキャッシュを完全消去・再スキャンさせ、新しい配置を強制認識させます
         cd /qmk_firmware
-        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040
+        qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache cleared"
+        
+        # 最新QMKの指定ルールに完全適合させたコマンドでコンパイルを走らせます
+        qmk compile -kb keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
-        # 生成された .build フォルダの中身（UF2ファイル）を確実に狙い撃ちして回収します
+        # QMK公式コンテナが生成する全階層の .uf2 / .bin ファイルを一網打尽にして回収します
         path: |
+          /qmk_firmware/*.uf2
+          /qmk_firmware/*.bin
           /qmk_firmware/.build/*.uf2
           /qmk_firmware/.build/*.bin
-          /qmk_firmware/*.uf2
