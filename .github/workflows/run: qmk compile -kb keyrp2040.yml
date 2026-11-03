@@ -28,9 +28,9 @@ jobs:
         # 親フォルダ（共通ドライバー含む）ごとQMK公式ディレクトリへ完璧に移植
         cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball /qmk_firmware/keyboards/
         
-        # 【最大重要】エラーを出すQMK CLIツールを使わず、QMK本来のmakeシステムを直接指定してコンパイルさせます
+        # 【最重要】末尾に「:uf2」ターゲットを明示し、中間binファイルから「.uf2」ファイルへの変換・結合を強制実行します
         cd /qmk_firmware
-        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040 -j$(nproc)
+        make keyball/keyball61:default:uf2 MCU=RP2040 BOOTLOADER=rp2040 -j$(nproc)
         
         # 生成されたファームウェアが環境内のどこに隠れても回収できるよう、
         # 出来上がった「.uf2」と「.bin」ファイルをコンテナの作業ルート（/tmp/artifacts）へ一斉に強制集約します
