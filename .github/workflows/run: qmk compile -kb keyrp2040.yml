@@ -10,41 +10,33 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナを使用
+    container: qmkfm/qmk_cli:latest
     steps:
     - name: Checkout repository from main branch
       uses: actions/checkout@v4
       with:
-        ref: main  # info.jsonが存在する「main」ブランチを固定で取得
+        ref: main
 
     - name: Force Smart Deploy and Compile Keyball61 (RP2040)
       run: |
-        # QMK公式環境を初期化
+        # QMK公式環境の初期化
         qmk setup -y
         
-        echo "=== [1] 本物の設定ファイル(info.json)をリポジトリ内から全自動探索 ==="
-        # リポジトリ内の全階層から、本物の keyball61 (info.jsonがあるフォルダ) をLinuxが直接探し出します
+        # 確実にプログラムが存在するフォルダをリポジトリ内から特定
         REAL_PATH=$(find . -type f -name "info.json" | grep "keyball61" | head -n 1 | xargs dirname)
-        
         if [ -z "$REAL_PATH" ]; then
-          echo "警告: keyball61フォルダ内にinfo.jsonが見つかりません。ルートから再探索します。"
           REAL_PATH=$(find . -type f -name "info.json" | head -n 1 | xargs dirname)
         fi
         
-        echo "発見した本物のソースコードの場所: $REAL_PATH"
-        
-        echo "=== [2] QMK公式環境へ完璧にドッキング ==="
-        # QMK側のキーボード用絶対パスを作成
+        # QMK公式の keyboards フォルダの配下に直接上書きコピー
         mkdir -p /qmk_firmware/keyboards/keyball/keyball61
-        
-        # 見つかった本物のプログラムソース（info.json、config.h、keymaps等）を隙間なくコピー
         cp -R ${REAL_PATH}/. /qmk_firmware/keyboards/keyball/keyball61/
         
-        echo "=== [3] コピー完了後のQMK内部のファイル構造チェック ==="
-        ls -la /qmk_firmware/keyboards/keyball/keyball61/
-        
-        echo "=== [4] ProMicro RP2040用コンパイル実行 ==="
+        # 【最重要】新しく追加したKeyball61のソースコードをQMKシステムに完全に認識・登録させます
         cd /qmk_firmware
+        qmk find -kb keyball/keyball61 || echo "Scanning..."
+        
+        # 確実にデータベースに登録された状態で、ProMicro RP2040用コンパイルを実行します
         qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
