@@ -1,0 +1,1 @@
+run: qmk compile -kb keyball/keyball61 -km default
