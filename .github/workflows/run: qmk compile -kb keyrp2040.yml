@@ -20,11 +20,9 @@ jobs:
       run: |
         python3 -m pip install --user qmk
 
-        - name: Clone official QMK Firmware
+    - name: Clone official QMK Firmware
       run: |
         git clone --depth=1 --recursive "https://github.com" /home/runner/qmk_firmware
-
-
 
     - name: Deploy Keyball Source to QMK
       run: |
