@@ -1,9 +1,37 @@
-Run # あなたのリポジトリに最初から入っている qmk_firmware フォルダに移動します
-usage: qmk [-h] [-v] [--datetime-fmt DATETIME_FMT] [--log-fmt LOG_FMT]
-           [--log-file-fmt LOG_FILE_FMT]
-           [--log-file-level {debug,info,warning,error,critical}]
-           [--log-file LOG_FILE] [--color] [--no-color] [--unicode]
-           [--no-unicode] [-V] [--interactive] [--config-file CONFIG_FILE]
-           {config,clone,console,env,setup} ...
-qmk: error: argument {config,clone,console,env,setup}: invalid choice: 'compile' (choose from config, clone, console, env, setup)
-Error: Process completed with exit code 2.
+name: Build QMK Firmware
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository with submodules
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install Build Dependencies
+      run: |
+        # RP2040 (ARM) のコンパイルに必要なクロスコンパイラを直接インストールします
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+
+    - name: Compile Keyball61 (RP2040)
+      run: |
+        cd qmk_firmware
+        # QMK CLIのバグを回避するため、内部のmakeシステムを直接叩いてRP2040版をビルドします
+        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Keyball61_RP2040_Firmware
+        path: |
+          qmk_firmware/*.uf2
+          qmk_firmware/*.bin
