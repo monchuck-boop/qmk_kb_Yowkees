@@ -16,23 +16,34 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Setup QMK Environment
+    - name: Install QMK CLI
       run: |
         python3 -m pip install --user qmk
-        qmk setup -y
 
-    - name: Link Keyball Firmware
+    - name: Clone official QMK Firmware
       run: |
-        # リポジトリ内のキーボードフォルダをQMKの環境へリンクします
-        if [ -d "keyboards/keyball" ]; then
-          ln -s $(pwd)/keyboards/keyball $(python3 -c "import qmk.path; print(qmk.path.keyboards_path())")/keyball
-        elif [ -d "keyball61" ]; then
-          mkdir -p $(python3 -c "import qmk.path; print(qmk.path.keyboards_path())")/keyball
-          ln -s $(pwd) $(python3 -c "import qmk.path; print(qmk.path.keyboards_path())")/keyball/keyball61
+        # 公式の最新QMK Firmwareをcloneします
+        git clone --depth=1 --recursive https://github.com /home/runner/qmk_firmware
+
+    - name: Deploy Keyball Source to QMK
+      run: |
+        # あなたのリポジトリにあるファイルをQMKの構造に合わせて正確にコピーします
+        mkdir -p /home/runner/qmk_firmware/keyboards/keyball
+        
+        if [ -d "keyboards/keyball/keyball61" ]; then
+          cp -R keyboards/keyball/* /home/runner/qmk_firmware/keyboards/keyball/
+        elif [ -f "info.json" ]; then
+          # リポジトリ直下に info.json や layouts がある場合（keyball61フォルダそのもののレポジトリの場合）
+          mkdir -p /home/runner/qmk_firmware/keyboards/keyball/keyball61
+          cp -R * /home/runner/qmk_firmware/keyboards/keyball/keyball61/
+        else
+          # keyboards/keyball 自体がルートにある場合
+          cp -R * /home/runner/qmk_firmware/keyboards/keyball/
         fi
 
     - name: Compile Keyball61
       run: |
+        cd /home/runner/qmk_firmware
         qmk compile -kb keyball/keyball61 -km default
 
     - name: Upload Artifacts
@@ -40,5 +51,5 @@ jobs:
       with:
         name: Keyball61_RP2040_Firmware
         path: |
-          *.uf2
-          *.bin
+          /home/runner/qmk_firmware/*.uf2
+          /home/runner/qmk_firmware/*.bin
