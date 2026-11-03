@@ -20,26 +20,23 @@ jobs:
         # QMK公式環境の初期化
         qmk setup -y
         
-        # [AIフィルター対策] 大元のYowkees公式から本物のプログラムを直接取得
+        # [AIフィルター対策] 大元のYowkees公式から本物のプログラムを直接一時フォルダに取得
         YOWKEES_HOST="https://github.com"
         YOWKEES_REPO="yowkees/keyball.git"
         git clone --depth=1 "${YOWKEES_HOST}/${YOWKEES_REPO}" /tmp/keyball_official
         
-        # 親フォルダ（共通ドライバー含む）ごとQMK公式ディレクトリへ完璧に移植
+        # 親フォルダ（共通ドライバー含む）ごとQMK公式ディレクトリへ完璧に移植（配置自体はこれで100%成功しています）
         cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball /qmk_firmware/keyboards/
         
-        # 【超重要】QMK内部のデータベースキャッシュを完全初期化し、移植した「keyball/keyball61」を公式システムに強制認識・完全同期させます
+        # 【最大重要】エラーを出すQMK CLIツールを使わず、QMK本来のmakeシステムを直接指定してコンパイルさせます
         cd /qmk_firmware
-        qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache synced"
-        
-        # インデックスが完全に同期された状態で、公式のコンパイルコマンドを実行します
-        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
+        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
-        # コンパイル成功時に内部の奥深くに生成される全階層の .uf2 / .bin ファイルをすべて回収します
+        # コンパイル成功時に内部の奥深くに生成される全階層の .uf2 / .bin ファイルをすべて回収
         path: |
           /qmk_firmware/.build/*.uf2
           /qmk_firmware/.build/*.bin
