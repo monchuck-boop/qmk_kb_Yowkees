@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナを使用
+    container: qmkfm/qmk_cli:latest
     steps:
     - name: Checkout repository from main branch
       uses: actions/checkout@v4
@@ -22,17 +22,26 @@ jobs:
         # QMK公式環境の初期化
         qmk setup -y
         
-        # 確実にプログラムが存在するフォルダを特定
-        REAL_PATH=$(find . -type f -name "info.json" | grep "keyball61" | head -n 1 | xargs dirname)
+        # 既存の紛らわしい壊れたqmk_firmwareフォルダによる誤検出を防ぐため、探索から完全に除外します
+        # ルート直下にある本物の「keyball61」設定フォルダ（info.jsonがある場所）だけをピンポイントで特定します
+        REAL_PATH=$(find . -maxdepth 2 -type f -name "info.json" | grep "keyball61" | head -n 1 | xargs dirname)
+        
         if [ -z "$REAL_PATH" ]; then
-          REAL_PATH=$(find . -type f -name "info.json" | head -n 1 | xargs dirname)
+          # 万が一親フォルダが挟まっていた場合のフォールバック
+          REAL_PATH="./keyball/keyball61"
         fi
         
-        # QMK公式が古い make システムでも100%認識できる標準ネスト構造（keyboards/keyball/keyball61）を作成して流し込みます
+        echo "本物のソースコードをここから取得します: $REAL_PATH"
+        
+        # QMK公式が100%認識できる標準ネスト構造（keyboards/keyball/keyball61）を強制展開
         mkdir -p /qmk_firmware/keyboards/keyball/keyball61
         cp -R ${REAL_PATH}/. /qmk_firmware/keyboards/keyball/keyball61/
         
-        # 【最重要】QMK CLIツールの判定バグを回避するため、内部のmakeシステムを直接実行してコンパイルさせます
+        # コピー完了後に本物のファイル群が配置されたかログで物理的に証明します
+        echo "=== 配置完了後の QMK内部のファイル一覧 ==="
+        ls -la /qmk_firmware/keyboards/keyball/keyball61/
+        
+        # QMK CLIツールのバグをすり抜け、内部のmakeシステムを直接実行してコンパイルさせます
         cd /qmk_firmware
         make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040
 
@@ -40,9 +49,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
-        # コンパイル成功時に内部の奥深くに生成される全階層の .uf2 / .bin ファイルをすべて回収します
         path: |
           /qmk_firmware/.build/*.uf2
           /qmk_firmware/.build/*.bin
           /qmk_firmware/*.uf2
-          /qmk_firmware/*.bin
