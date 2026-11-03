@@ -22,32 +22,28 @@ jobs:
 
     - name: Clone official QMK Firmware
       run: |
-        # 確実にURLを1つに結合して実行させるため、変数を経由させて保護しています
         QMK_URL_HOST="https://github.com"
         QMK_URL_PATH="qmk/qmk_firmware.git"
         git clone --depth=1 --recursive "${QMK_URL_HOST}/${QMK_URL_PATH}" /home/runner/qmk_firmware
 
     - name: Deploy Keyball Source to QMK
       run: |
-        # あなたのリポジトリにあるファイルをQMKの構造に合わせて正確にコピーします
-        mkdir -p /home/runner/qmk_firmware/keyboards/keyball
+        # QMK公式の keyboards 直下に keyball61 フォルダとして直接配置します
+        mkdir -p /home/runner/qmk_firmware/keyboards/keyball61
         
         if [ -d "keyboards/keyball/keyball61" ]; then
-          cp -R keyboards/keyball/* /home/runner/qmk_firmware/keyboards/keyball/
-        elif [ -f "info.json" ]; then
-          # リポジトリ直下に info.json がある場合
-          mkdir -p /home/runner/qmk_firmware/keyboards/keyball/keyball61
-          cp -R * /home/runner/qmk_firmware/keyboards/keyball/keyball61/
+          cp -R keyboards/keyball/keyball61/* /home/runner/qmk_firmware/keyboards/keyball61/
+        elif [ -d "keyball61" ]; then
+          cp -R keyball61/* /home/runner/qmk_firmware/keyboards/keyball61/
         else
-          # keyboards/keyball 自体がルートにある場合
-          cp -R * /home/runner/qmk_firmware/keyboards/keyball/
+          cp -R * /home/runner/qmk_firmware/keyboards/keyball61/
         fi
 
     - name: Compile Keyball61 (RP2040)
       run: |
         cd /home/runner/qmk_firmware
-        # ProMicro RP2040用にマイコンとブートローダーを指定してコンパイルします
-        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
+        # キーボード名を keyball61 に変更してビルドを実行します
+        qmk compile -kb keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
