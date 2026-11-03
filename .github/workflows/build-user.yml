@@ -1,5 +1,12 @@
 name: Build a firmware on demand
 
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true  # ←この1行を書き加えます
+      - name: Sync QMK Submodules
+        run: qmk git-submodule
+          
 on:
   workflow_dispatch:
     inputs:
