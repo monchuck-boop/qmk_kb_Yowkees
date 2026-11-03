@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナ環境
+    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナを使用
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
         # QMK公式環境の初期化
         qmk setup -y
         
-        # [AIフィルター対策] 大元のYowkees公式から本物のプログラムを一時フォルダに直接ロードします
+        # [AIフィルター対策] 大元のYowkees公式から本物のプログラムを一時フォルダに直接取得します
         YOWKEES_HOST="https://github.com"
         YOWKEES_REPO="yowkees/keyball.git"
         git clone --depth=1 "${YOWKEES_HOST}/${YOWKEES_REPO}" /tmp/keyball_official
@@ -28,17 +28,14 @@ jobs:
         # 親フォルダ（共通ドライバー含む）ごとQMK公式ディレクトリへ完璧に移植
         cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball /qmk_firmware/keyboards/
         
-        # QMK内部のデータベースキャッシュを強制初期化して完全同期
+        # 【最大重要】エラーを出すQMK CLIツールを使わず、QMK本来のmakeシステムを直接指定してコンパイルさせます
         cd /qmk_firmware
-        qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache synced"
+        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040 -j$(nproc)
         
-        # インデックスが完全に同期された状態で公式のコンパイルコマンドを実行
-        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
-        
-        # 【最重要】生成されたファームウェアが環境内のどこに隠れても回収できるよう、
+        # 生成されたファームウェアが環境内のどこに隠れても回収できるよう、
         # 出来上がった「.uf2」と「.bin」ファイルをコンテナの作業ルート（/tmp/artifacts）へ一斉に強制集約します
         mkdir -p /tmp/artifacts
-        find / -name "*.uf2" -o -name "*.bin" 2>/dev/null | grep -E "keyball|qmk" | xargs -I {} cp {} /tmp/artifacts/ || true
+        find /qmk_firmware -name "*.uf2" -o -name "*.bin" 2>/dev/null | xargs -I {} cp {} /tmp/artifacts/ || true
         
         echo "=== 集約完了した成果物ファイル一覧 ==="
         ls -la /tmp/artifacts/
