@@ -10,50 +10,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: qmkfm/qmk_cli:latest  # QMK公式の最新ビルド環境（コンテナ）を直接使用します
     steps:
-    - name: Checkout repository with submodules
+    - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Install Build Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
-
-    - name: Investigate and Force Deploy
-      run: |
-        # 同梱されているQMKの構造を自動的に調べ上げ、
-        # 正しい keyboards ディレクトリを捕捉してファイルを流し込みます。
-        cd qmk_firmware
-        
-        # 既存のkeyboardsの正確な構造を探す
-        DETECTED_DIR=$(find keyboards -type d -name "keyball" -print -quit)
-        
-        if [ ! -z "$DETECTED_DIR" ]; then
-          echo "Found keyball master directory at: $DETECTED_DIR"
-          mkdir -p "$DETECTED_DIR/keyball61"
-          cp -R ../keyball61/. "$DETECTED_DIR/keyball61/"
-          echo "BUILD_CMD=make keyball/keyball61:default" >> $GITHUB_ENV
-        else
-          echo "Keyball master directory not found, fallback to direct layout"
-          mkdir -p keyboards/keyball61
-          cp -R ../keyball61/. keyboards/keyball61/
-          echo "BUILD_CMD=make keyball61:default" >> $GITHUB_ENV
-        fi
 
     - name: Compile Keyball61 (RP2040)
       run: |
-        cd qmk_firmware
-        # 自動捕捉された正確な構造をターゲットにしてビルドを実行します
-        ${{ env.BUILD_CMD }} MCU=RP2040 BOOTLOADER=rp2040
+        # QMK公式の最新ソースコードをコンテナ内に強制的にセットアップします（URL不要）
+        qmk setup -y
+        
+        # あなたのリポジトリの keyball61 フォルダを、QMKの正しい位置にドッキングします
+        mkdir -p /qmk_firmware/keyboards/keyball
+        cp -R keyball61 /qmk_firmware/keyboards/keyball/
+        
+        # ProMicro RP2040用に完璧なビルドコマンドを実行します
+        cd /qmk_firmware
+        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
         path: |
-          qmk_firmware/*.uf2
-          qmk_firmware/*.bin
-          qmk_firmware/.build/*.uf2
-          qmk_firmware/.build/*.bin
+          /qmk_firmware/*.uf2
+          /qmk_firmware/*.bin
+          /qmk_firmware/.build/*.uf2
+          /qmk_firmware/.build/*.bin
