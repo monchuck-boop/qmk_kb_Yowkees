@@ -1,18 +1,18 @@
-# MCU name
-MCU = atmega32u4
+# MCU name (RP2040化のためコメントアウト)
+# MCU = atmega32u4
 
-# Bootloader selection
-BOOTLOADER = caterina
+# Bootloader selection (RP2040化のためコメントアウト)
+# BOOTLOADER = caterina
 
 # Link Time Optimization required for size.
 LTO_ENABLE = yes
 
-# Build Options
-BOOTMAGIC_ENABLE = no       # Enable Bootmagic Lite
-EXTRAKEY_ENABLE = no        # Audio control and System control
+# Build Options (RP2040は容量に余裕があるため標準的な機能を有効化)
+BOOTMAGIC_ENABLE = yes      # Enable Bootmagic Lite
+EXTRAKEY_ENABLE = yes       # Audio control and System control
 CONSOLE_ENABLE = no         # Console for debug
 COMMAND_ENABLE = no         # Commands for debug and configuration
-NKRO_ENABLE = no            # Enable N-Key Rollover
+NKRO_ENABLE = yes           # Enable N-Key Rollover
 BACKLIGHT_ENABLE = no       # Enable keyboard backlight functionality
 AUDIO_ENABLE = no           # Audio output
 
@@ -30,10 +30,10 @@ SRC += drivers/pmw3360/pmw3360.c
 QUANTUM_LIB_SRC += spi_master.c # Optical sensor use SPI to communicate
 
 # This is unnecessary for processing KC_MS_BTN*.
-MOUSEKEY_ENABLE = no
+MOUSEKEY_ENABLE = yes
 
 # Enabled only one of RGBLIGHT and RGB_MATRIX if necessary.
-RGBLIGHT_ENABLE = no        # Enable RGBLIGHT
+RGBLIGHT_ENABLE = yes       # Enable RGBLIGHT
 RGB_MATRIX_ENABLE = no      # Enable RGB_MATRIX (not work yet)
 RGB_MATRIX_DRIVER = ws2812
 
@@ -41,13 +41,13 @@ RGB_MATRIX_DRIVER = ws2812
 SLEEP_LED_ENABLE = no       # Breathing sleep LED during USB suspend
 
 # To support OLED
-OLED_ENABLE = no                # Please Enable this in each keymaps.
+OLED_ENABLE = yes               # Please Enable this in each keymaps.
 SRC += lib/oledkit/oledkit.c    # OLED utility for Keyball series.
 
 # Include common library
 SRC += lib/keyball/keyball.c
 
-# Disable other features to squeeze firmware size
-SPACE_CADET_ENABLE = no
-GRAVE_ESC_ENABLE = no
-MAGIC_ENABLE = no
+# Disable other features to squeeze firmware size (RP2040では有効でも大丈夫です)
+SPACE_CADET_ENABLE = yes
+GRAVE_ESC_ENABLE = yes
+MAGIC_ENABLE = yes
