@@ -11,33 +11,42 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
+    - name: Checkout repository with submodules
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
 
-    - name: Rebuild QMK Environment
+    - name: Investigate and Force Deploy
       run: |
-        # 既存の不完全な qmk_firmware フォルダを削除し、
-        # 正しい Keyball 対応ファームウェアベースを Actions 上に新しくダウンロードします
-        rm -rf qmk_firmware
-        git clone --depth=1 --recursive "https://github.com" qmk_firmware
-
-    - name: Deploy Keyball61 Source
-      run: |
-        # 最新のQMK構造（keyboards/keyball/keyball61）を作成し、
-        # あなたのリポジトリにあるソースファイルを正しく配置します
-        mkdir -p qmk_firmware/keyboards/keyball/keyball61
-        cp -R keyball61/. qmk_firmware/keyboards/keyball/keyball61/
+        # 同梱されているQMKの構造を自動的に調べ上げ、
+        # 正しい keyboards ディレクトリを捕捉してファイルを流し込みます。
+        cd qmk_firmware
+        
+        # 既存のkeyboardsの正確な構造を探す
+        DETECTED_DIR=$(find keyboards -type d -name "keyball" -print -quit)
+        
+        if [ ! -z "$DETECTED_DIR" ]; then
+          echo "Found keyball master directory at: $DETECTED_DIR"
+          mkdir -p "$DETECTED_DIR/keyball61"
+          cp -R ../keyball61/. "$DETECTED_DIR/keyball61/"
+          echo "BUILD_CMD=make keyball/keyball61:default" >> $GITHUB_ENV
+        else
+          echo "Keyball master directory not found, fallback to direct layout"
+          mkdir -p keyboards/keyball61
+          cp -R ../keyball61/. keyboards/keyball61/
+          echo "BUILD_CMD=make keyball61:default" >> $GITHUB_ENV
+        fi
 
     - name: Compile Keyball61 (RP2040)
       run: |
         cd qmk_firmware
-        # 正しく構築された環境で ProMicro RP2040 (Vial対応) のビルドを実行します
-        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040
+        # 自動捕捉された正確な構造をターゲットにしてビルドを実行します
+        ${{ env.BUILD_CMD }} MCU=RP2040 BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
