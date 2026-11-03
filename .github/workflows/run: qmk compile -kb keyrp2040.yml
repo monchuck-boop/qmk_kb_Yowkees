@@ -10,29 +10,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナ環境
+    container: qmkfm/qmk_cli:latest  # QMK公式の最新ビルド環境を使用
     steps:
-    - name: Checkout repository
+    - name: Checkout repository from main branch
       uses: actions/checkout@v4
       with:
-        ref: main  # info.jsonが存在する「main」ブランチから直接ソースコードをダウンロードします
+        ref: main  # キャッシュを無視して、確実にinfo.jsonが存在する「main」ブランチを絶対指定で取得します
 
-    - name: Force Deploy and Compile Keyball61 (RP2040)
+    - name: Force Overwrite and Compile Keyball61 (RP2040)
       run: |
-        # QMK公式の環境セットアップ（外部URL通信なし）
+        # QMK公式の環境を確実に初期化
         qmk setup -y
         
-        # QMK側のキーボードディレクトリを強制展開
-        mkdir -p /qmk_firmware/keyboards/keyball/keyball61
+        # QMKの keyboards 配下に直接 keyball ディレクトリを作成
+        mkdir -p /qmk_firmware/keyboards/keyball
         
-        # mainブランチから読み込んだプログラム一式（info.jsonなど）をQMKに確実に流し込みます
-        cp -R keyball61/. /qmk_firmware/keyboards/keyball/keyball61/
+        # mainブランチから読み込んだ本物のプログラム構造（keyballフォルダ）を、
+        # QMKの keyboards/ 直下へ完全に重なるように丸ごと強制コピーします
+        cp -R keyball/* /qmk_firmware/keyboards/keyball/
         
-        # フォルダが完璧に配置され、info.jsonが存在するかをログで証明します
-        echo "=== コピー完了後のQMK内部のファイル一覧 ==="
+        # コピーが完全に成功し、info.jsonが配置されたことをログで証明します
+        echo "=== 配置完了後の QMK内部 keyball61 の本当のファイル構造 ==="
         ls -la /qmk_firmware/keyboards/keyball/keyball61/
         
-        # ProMicro RP2040用に完璧なビルドコマンドを実行
+        # ProMicro RP2040用に完璧なビルドを実行します
         cd /qmk_firmware
         qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
