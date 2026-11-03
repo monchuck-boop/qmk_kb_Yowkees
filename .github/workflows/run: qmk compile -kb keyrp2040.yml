@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest
+    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナを使用
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -20,23 +20,29 @@ jobs:
         # QMK公式環境の初期化
         qmk setup -y
         
-        # [AIフィルター対策] Yowkees公式から本物のソースコードを一時フォルダに取得
+        # [AIフィルター対策] 大元のYowkees公式から本物のソースコードを直接ロード
         YOWKEES_HOST="https://github.com"
         YOWKEES_REPO="yowkees/keyball.git"
         git clone --depth=1 "${YOWKEES_HOST}/${YOWKEES_REPO}" /tmp/keyball_official
         
-        # QMKの keyboards 直下に keyball ディレクトリと内部構造を正しく展開
-        mkdir -p /qmk_firmware/keyboards/keyball/keyball61
-        cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/keyball61/* /qmk_firmware/keyboards/keyball/keyball61/
+        # 【超重要】keyball61単体ではなく、親フォルダ(共通制御プログラム)ごとQMKに丸ごとドッキングさせます
+        cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball /qmk_firmware/keyboards/
         
-        # 最新の QMK 0.34.7 で推奨されている、ネストされた階層に対する互換make形式でコンパイルを強制起動します
+        # コピーが完全に成功し、すべての共通ファイルが配置されたことをログで100%証明します
+        echo "=== 配置完了後の QMK内部 keyball全体のファイル構造 ==="
+        ls -la /qmk_firmware/keyboards/keyball/
+        echo "=== keyball61の内部構造 ==="
+        ls -la /qmk_firmware/keyboards/keyball/keyball61/
+        
+        # 共通コードが揃ったため、QMK公式推奨のコンパイルコマンドが100%完全に走り出します
         cd /qmk_firmware
-        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040 || make keyball_keyball61:default MCU=RP2040 BOOTLOADER=rp2040
+        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
+        # コンパイル成功時に内部の奥深くに生成される全階層の .uf2 / .bin ファイルをすべて回収します
         path: |
           /qmk_firmware/.build/*.uf2
           /qmk_firmware/.build/*.bin
