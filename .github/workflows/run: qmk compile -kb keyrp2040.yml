@@ -25,8 +25,8 @@ jobs:
     - name: Compile Keyball61 (RP2040)
       run: |
         cd qmk_firmware
-        # QMK CLIのバグを回避するため、内部のmakeシステムを直接叩いてRP2040版をビルドします
-        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040
+        # 同梱されている独自構造に合わせて 'keyball61:default' でビルドを実行します
+        make keyball61:default MCU=RP2040 BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
