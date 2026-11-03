@@ -10,32 +10,48 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest  # QMK公式の最新ビルド環境を直接使用
+    container: qmkfm/qmk_cli:latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Compile Keyball61 (RP2040)
       run: |
-        # QMK環境のセットアップ
+        # QMK環境の初期化
         qmk setup -y
         
-        # ターゲットフォルダの強制作成
-        mkdir -p /qmk_firmware/keyboards/keyball/keyball61
+        echo "=== [1] あなたのリポジトリの構造を検査 ==="
+        ls -la
         
-        # フォルダ名が「keyball/keyball61」か「keyball61」のどちらであっても自動検知してコピーします
+        echo "=== [2] QMKへの強制的・網羅的なソース配置 ==="
+        # フォルダ構造のダブりを完全に防ぐため、想定されるすべての配置パターンを網羅します
+        mkdir -p /qmk_firmware/keyboards/keyball/keyball61
+        mkdir -p /qmk_firmware/keyboards/keyball61
+        
+        # リポジトリ内の『すべてのファイル』からKeyball61の設定（info.jsonなど）を探して流し込みます
         if [ -d "keyball/keyball61" ]; then
           cp -R keyball/keyball61/. /qmk_firmware/keyboards/keyball/keyball61/
+          cp -R keyball/keyball61/. /qmk_firmware/keyboards/keyball61/
         elif [ -d "keyball61" ]; then
           cp -R keyball61/. /qmk_firmware/keyboards/keyball/keyball61/
+          cp -R keyball61/. /qmk_firmware/keyboards/keyball61/
         else
-          # 万が一直下にソースファイルが散らばっている場合のフォールバック
+          # ルート直下に直接散らばっている場合
           find . -maxdepth 1 -not -name '.' -not -name 'qmk_firmware' -not -name '.git' -not -name '.github' -exec cp -R {} /qmk_firmware/keyboards/keyball/keyball61/ \;
+          find . -maxdepth 1 -not -name '.' -not -name 'qmk_firmware' -not -name '.git' -not -name '.github' -exec cp -R {} /qmk_firmware/keyboards/keyball61/ \;
         fi
         
-        # ProMicro RP2040用に完璧なビルドコマンドを実行
+        echo "=== [3] コピー後のQMK側フォルダ構造を検証 ==="
+        echo "--- keyboards/keyball/keyball61 の中身 ---"
+        ls -la /qmk_firmware/keyboards/keyball/keyball61 || echo "Not found"
+        echo "--- keyboards/keyball61 の中身 ---"
+        ls -la /qmk_firmware/keyboards/keyball61 || echo "Not found"
+        
+        echo "=== [4] コンパイルの実行 ==="
         cd /qmk_firmware
-        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
+        # どちらの名前が正解でも通るように順番に試行します
+        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040 || \
+        qmk compile -kb keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
