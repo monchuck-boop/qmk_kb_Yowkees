@@ -22,7 +22,7 @@ jobs:
 
     - name: Clone official QMK Firmware
       run: |
-        # 正しい完全なURLを一行でスペースを挟まずcloneします
+        # 正しいURLでQMK公式リポジトリとすべてのサブモジュールを取得します
         git clone --depth=1 --recursive https://github.com /home/runner/qmk_firmware
 
     - name: Deploy Keyball Source to QMK
@@ -41,10 +41,11 @@ jobs:
           cp -R * /home/runner/qmk_firmware/keyboards/keyball/
         fi
 
-    - name: Compile Keyball61
+    - name: Compile Keyball61 (RP2040)
       run: |
         cd /home/runner/qmk_firmware
-        qmk compile -kb keyball/keyball61 -km default
+        # ProMicro RP2040用にマイコンとブートローダーを指定してコンパイルします
+        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
@@ -53,16 +54,3 @@ jobs:
         path: |
           /home/runner/qmk_firmware/*.uf2
           /home/runner/qmk_firmware/*.bin
-```
-
-## 🔄 保存した後の手順
-1. 上記コードを貼り付けて **「Commit changes...」** で保存します。
-2. **「Actions」** タブに移動して新しいビルドを見守ります。
-
-今度はQMK公式のプログラム群（`qmk_firmware.git`）を確実に一発でダウンロードするため、この「リポジトリが見つからない」エラーは100%突破できます。
-
-保存後、コンパイルが正常に進むか確認してみてください！
-
-<FollowUp>
-この修正で保存した後、GitHub Actionsの**ビルドが成功（緑のチェック）**したか、あるいは**「Compile Keyball61」のステップで別の新しいエラー（赤文字）**が出たか、結果を教えてください。
-</FollowUp>
