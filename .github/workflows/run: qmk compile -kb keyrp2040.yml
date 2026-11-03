@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest
+    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナを使用
     steps:
     - name: Checkout repository from main branch
       uses: actions/checkout@v4
@@ -22,22 +22,19 @@ jobs:
         # QMK公式環境の初期化
         qmk setup -y
         
-        # 確実にプログラムが存在するフォルダをリポジトリ内から特定
+        # 確実にプログラムが存在するフォルダを特定します
         REAL_PATH=$(find . -type f -name "info.json" | grep "keyball61" | head -n 1 | xargs dirname)
         if [ -z "$REAL_PATH" ]; then
           REAL_PATH=$(find . -type f -name "info.json" | head -n 1 | xargs dirname)
         fi
         
-        # QMK公式の keyboards フォルダの配下に直接上書きコピー
+        # QMK公式の keyboards フォルダの配下に直接上書きコピーします
         mkdir -p /qmk_firmware/keyboards/keyball/keyball61
         cp -R ${REAL_PATH}/. /qmk_firmware/keyboards/keyball/keyball61/
         
-        # 【最重要】新しく追加したKeyball61のソースコードをQMKシステムに完全に認識・登録させます
+        # 【最重要】QMK CLIの認識バグを回避するため、エラーを出すツールを使わず、内部のmakeシステムを直接実行します
         cd /qmk_firmware
-        qmk find -kb keyball/keyball61 || echo "Scanning..."
-        
-        # 確実にデータベースに登録された状態で、ProMicro RP2040用コンパイルを実行します
-        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
+        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
