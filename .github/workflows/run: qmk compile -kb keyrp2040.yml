@@ -22,8 +22,9 @@ jobs:
 
     - name: Clone official QMK Firmware
       run: |
-        # 正しいURLでQMK公式リポジトリとすべてのサブモジュールを取得します
+        # スペースを空けず、QMK公式リポジトリのフルURLを指定します
         git clone --depth=1 --recursive https://github.com /home/runner/qmk_firmware
+
 
     - name: Deploy Keyball Source to QMK
       run: |
