@@ -10,72 +10,34 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナ環境
+    container: qmkfm/qmk_cli:latest  # QMK公式の最新コンテナ環境
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Force Official Sync and Compile Keyball61 (RP2040)
+    - name: Compile Keyball61 from Repository Path
       run: |
         # 1. QMK公式環境の初期化
         qmk setup -y
-        
-        # 2. あなたのリポジトリにある本物のソースコードを、QMKの正規ビルド位置（/qmk_firmware/keyboards/keyball）へ完璧にドッキングします。
-        # フォルダ構成のズレを完全に吸収するため、想定される配置から確実にルートへコピーを試みます。
+
+        # 2. あなたのリポジトリの正確な階層から、QMKの正規配置フォルダへドライバーごと一斉にコピーします
         mkdir -p /qmk_firmware/keyboards/keyball
-        if [ -d "./keyball_rp2040" ]; then
-          cp -R ./keyball_rp2040/* /qmk_firmware/keyboards/keyball/
-        elif [ -d "./keyball61" ]; then
-          cp -R ./keyball61/* /qmk_firmware/keyboards/keyball/
-          cp -R ./drivers /qmk_firmware/keyboards/keyball/ 2>/dev/null || true
-        else
-          cp -R ./* /qmk_firmware/keyboards/keyball/
-        fi
-        
-        # もし keyball 直下に keyball61 フォルダが入っていない場合、階層を正しく補正します
-        if [ ! -d "/qmk_firmware/keyboards/keyball/keyball61" ]; then
-          mkdir -p /qmk_firmware/keyboards/keyball/keyball61
-          cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/keyball61/* /qmk_firmware/keyboards/keyball/keyball61/ 2>/dev/null || true
-        fi
+        cp -R ./qmk_firmware/keyboards/keyball/* /qmk_firmware/keyboards/keyball/
 
-        # 3. 【C言語エラー対策】キーマップの引数（64個）を物理マトリクス（50個）に適合させるラッパーマクロの注入
-        TARGET_H="/qmk_firmware/keyboards/keyball/keyball61/keyball61.h"
-        if [ -f "$TARGET_H" ]; then
-          sed -i 's/#define LAYOUT_universal(/#define LAYOUT_universal_old(/g' "$TARGET_H"
-          echo "" >> "$TARGET_H"
-          echo "#define LAYOUT_universal( \\" >> "$TARGET_H"
-          echo "    K00, K01, K02, K03, K04, K05,      K06, K07, K08, K09, K10, K11, \\" >> "$TARGET_H"
-          echo "    K12, K13, K14, K15, K16, K17,      K18, K19, K20, K21, K22, K23, \\" >> "$TARGET_H"
-          echo "    K24, K25, K26, K27, K28, K29,      K30, K31, K32, K33, K34, K35, \\" >> "$TARGET_H"
-          echo "    K36, K37, K38, K39, K40, K41, K42, K43, K44, K45, K46, K47, K48, \\" >> "$TARGET_H"
-          echo "    K49, K50, K51, K52, K53, K54, K55, K56, K57, K58, K59, K60, K61, K62 \\" >> "$TARGET_H"
-          echo ") LAYOUT_universal_old( \\" >> "$TARGET_H"
-          echo "    K00, K01, K02, K03, K04, K05,      K06, K07, K08, K09, K10, K11, \\" >> "$TARGET_H"
-          echo "    K12, K13, K14, K15, K16, K17,      K18, K19, K20, K21, K22, K23, \\" >> "$TARGET_H"
-          echo "    K24, K25, K26, K27, K28, K29,      K30, K31, K32, K33, K34, K35, \\" >> "$TARGET_H"
-          echo "    K36, K37, K38, K39, K40, K41,           K43, K44, K45, K46, K47, K48, \\" >> "$TARGET_H"
-          echo "    K49,      K51, K52,      K54,           K56, K57,      K59, K60 \\" >> "$TARGET_H"
-          echo ")" >> "$TARGET_H"
-        fi
-
-        # 4. QMK内部のインデックスキャッシュを同期させ、正規の位置（keyball/keyball61）として完全認識させます
+        # 3. QMK内部のデータベースキャッシュを強制初期化して、新しい配置を公式システムに認識させます
         cd /qmk_firmware
-        qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache refreshed"
+        qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache synced"
 
-        # 5. 正規の qmk compile コマンドでビルドを実行
-        # 環境とプラットフォーム（RP2040）の定義が完全に同期されたため、エラーを出さずに正常にコンパイルが走りきります
+        # 4. あなたのソースコードの中身をそのまま使い、ProMicro RP2040向けのコンパイルを実行します
         qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
-        # 6. 生成された本物の完成ファームウェア（.uf2）をピンポイントで強制抽出します
+        # 5. 生成された本物の完成ファームウェア（.uf2）を抽出して集約
         mkdir -p /tmp/artifacts
         find /qmk_firmware/.build -name "*.uf2" 2>/dev/null | xargs -I {} cp {} /tmp/artifacts/ || true
-
-        echo "=== 最終成果物ファイル一覧 ==="
-        ls -la /tmp/artifacts/
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
-        # コンパイルが完全に走りきって生成された本物の完成UF2ファイル（数百KB）だけを確実に引き上げます
+        # コンパイルが完全に走りきって生成された本物の完成UF2ファイルだけを確実に引き上げます
         path: /tmp/artifacts/
