@@ -1,2 +1,44 @@
-name: Build Keyball61 RP2040 Firmware
-run: qmk compile -kb keyball/keyball61 -km default
+name: Build QMK Firmware
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup QMK Environment
+      run: |
+        python3 -m pip install --user qmk
+        qmk setup -y
+
+    - name: Link Keyball Firmware
+      run: |
+        # リポジトリ内のキーボードフォルダをQMKの環境へリンクします
+        if [ -d "keyboards/keyball" ]; then
+          ln -s $(pwd)/keyboards/keyball $(python3 -c "import qmk.path; print(qmk.path.keyboards_path())")/keyball
+        elif [ -d "keyball61" ]; then
+          mkdir -p $(python3 -c "import qmk.path; print(qmk.path.keyboards_path())")/keyball
+          ln -s $(pwd) $(python3 -c "import qmk.path; print(qmk.path.keyboards_path())")/keyball/keyball61
+        fi
+
+    - name: Compile Keyball61
+      run: |
+        qmk compile -kb keyball/keyball61 -km default
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Keyball61_RP2040_Firmware
+        path: |
+          *.uf2
+          *.bin
