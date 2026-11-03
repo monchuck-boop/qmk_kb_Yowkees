@@ -6,8 +6,29 @@
     },
     "manufacturer": "Yowkees",
     "keyboard_name": "Keyball61",
+    "processor": "RP2040",
+    "bootloader": "rp2040",
+    "board": "GENERIC_RP2040",
+    "features": {
+        "bootmagic_lite": true,
+        "command": false,
+        "console": false,
+        "extrakey": true,
+        "mousekey": true,
+        "nkro": true,
+        "rgblight": true,
+        "split_keyboard": true
+    },
+    "matrix_pins": {
+        "cols": ["GP29", "GP28", "GP27", "GP26", "GP22", "GP20"],
+        "rows": ["GP6", "GP7", "GP8", "GP9", "GP21"]
+    },
+    "split": {
+        "soft_serial_pin": "GP0"
+    },
     "rgblight": {
-        "driver": "ws2812"
+        "driver": "ws2812",
+        "pin": "GP5"
     },
     "layouts": {
       "LAYOUT_no_ball": {
