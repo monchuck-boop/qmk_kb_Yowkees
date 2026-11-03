@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest
+    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナを使用
     steps:
     - name: Checkout repository from main branch
       uses: actions/checkout@v4
@@ -28,24 +28,21 @@ jobs:
           REAL_PATH=$(find . -type f -name "info.json" | head -n 1 | xargs dirname)
         fi
         
-        # QMK公式最新のキーボードルールに準拠させ、keyboards直下に「keyball61」を直接配置します
-        mkdir -p /qmk_firmware/keyboards/keyball61
-        cp -R ${REAL_PATH}/. /qmk_firmware/keyboards/keyball61/
+        # QMK公式が古い make システムでも100%認識できる標準ネスト構造（keyboards/keyball/keyball61）を作成して流し込みます
+        mkdir -p /qmk_firmware/keyboards/keyball/keyball61
+        cp -R ${REAL_PATH}/. /qmk_firmware/keyboards/keyball/keyball61/
         
-        # 【最重要】QMKにデータベースのキャッシュを完全消去・再スキャンさせ、新しい配置を強制認識させます
+        # 【最重要】QMK CLIツールの判定バグを回避するため、内部のmakeシステムを直接実行してコンパイルさせます
         cd /qmk_firmware
-        qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache cleared"
-        
-        # 最新QMKの指定ルールに完全適合させたコマンドでコンパイルを走らせます
-        qmk compile -kb keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
+        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
-        # QMK公式コンテナが生成する全階層の .uf2 / .bin ファイルを一網打尽にして回収します
+        # コンパイル成功時に内部の奥深くに生成される全階層の .uf2 / .bin ファイルをすべて回収します
         path: |
-          /qmk_firmware/*.uf2
-          /qmk_firmware/*.bin
           /qmk_firmware/.build/*.uf2
           /qmk_firmware/.build/*.bin
+          /qmk_firmware/*.uf2
+          /qmk_firmware/*.bin
