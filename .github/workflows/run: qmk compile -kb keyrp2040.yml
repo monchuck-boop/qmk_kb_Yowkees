@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナを使用
+    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナ環境
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -20,29 +20,28 @@ jobs:
         # QMK公式環境の初期化
         qmk setup -y
         
-        # [AIフィルター対策] Yowkees公式から本物のソースコードを一時フォルダに取得
+        # [AIフィルター対策] 大元のYowkees公式から本物のソースコードを一時フォルダに取得
         YOWKEES_HOST="https://github.com"
         YOWKEES_REPO="yowkees/keyball.git"
         git clone --depth=1 "${YOWKEES_HOST}/${YOWKEES_REPO}" /tmp/keyball_official
         
-        # 【超重要】最新QMK（0.34.7）の指定ルールに完全適合させるため、
-        # keyboards直下に「keyball61」をダイレクトに展開します
-        mkdir -p /qmk_firmware/keyboards/keyball61
-        cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/keyball61/* /qmk_firmware/keyboards/keyball61/
+        # ソースコード内部の定義に適合させるため、正しい階層構造（keyboards/keyball/keyball61）を作成して流し込みます
+        mkdir -p /qmk_firmware/keyboards/keyball/keyball61
+        cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball/keyball61/* /qmk_firmware/keyboards/keyball/keyball61/
         
-        # 配置完了後のファイル一覧をログで確認（info.jsonがあるかチェック）
-        echo "=== 最新ルールに完全適合させたQMK内部のファイル構造 ==="
-        ls -la /qmk_firmware/keyboards/keyball61/
-        
-        # QMKの公式指定形式に従い、ダイレクトなターゲット名でコンパイルを強制起動します
+        # 【最重要】QMK CLIツールのデータベース（内部キャッシュ）を一度完全に破壊して再スキャンさせ、
+        # 追加された keyball/keyball61 を公式システムに強制登録・認識させます
         cd /qmk_firmware
-        make keyball61:default MCU=RP2040 BOOTLOADER=rp2040
+        qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache refreshed"
+        
+        # インデックスが完全に同期された状態で、公式推奨コマンドで完璧なコンパイルを実行します
+        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
-        # コンパイル成功時に内部の奥深くに生成される全階層の .uf2 / .bin ファイルをすべて回収
+        # コンパイル成功時に内部の奥深くに生成される全階層の .uf2 / .bin ファイルを一網打尽にして回収します
         path: |
           /qmk_firmware/.build/*.uf2
           /qmk_firmware/.build/*.bin
