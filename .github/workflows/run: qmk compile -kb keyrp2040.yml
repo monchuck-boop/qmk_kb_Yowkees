@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest  # 最新の完璧なQMK公式ビルド環境を直接使用します
+    container: qmkfm/qmk_cli:latest  # QMK公式の最新ビルド環境をコンテナとして直接使用します
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -20,12 +20,11 @@ jobs:
         # QMK公式の最新ソースコードをコンテナ内に確実にセットアップします
         qmk setup -y
         
-        # あなたのリポジトリにある keyball61 フォルダを、QMKの正しい位置に『中身だけ』展開します
-        # フォルダの重複を防ぐため、宛先のフォルダを作ってから「/.」指定で中身だけをコピーします
-        mkdir -p /qmk_firmware/keyboards/keyball/keyball61
-        cp -R keyball61/. /qmk_firmware/keyboards/keyball/keyball61/
+        # あなたのリポジトリにある「keyball」フォルダ（親フォルダごと）を
+        # QMK公式の keyboards/ 直下に完全に適合するように正しく上書きコピーします
+        cp -R keyball /qmk_firmware/keyboards/
         
-        # ProMicro RP2040用に完璧なビルドコマンドを実行します
+        # 正しいパス構造（keyboards/keyball/keyball61）に配置されたため、ビルドが正常に開始されます
         cd /qmk_firmware
         qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
