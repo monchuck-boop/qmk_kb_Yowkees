@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
+    - name: Checkout repository with submodules
       uses: actions/checkout@v4
       with:
         submodules: recursive
@@ -20,29 +20,12 @@ jobs:
       run: |
         python3 -m pip install --user qmk
 
-    - name: Clone official QMK Firmware
-      run: |
-        QMK_URL_HOST="https://github.com"
-        QMK_URL_PATH="qmk/qmk_firmware.git"
-        git clone --depth=1 --recursive "${QMK_URL_HOST}/${QMK_URL_PATH}" /home/runner/qmk_firmware
-
-    - name: Deploy Keyball Source to QMK
-      run: |
-        # QMK側に keyboards/keyball/keyball61 ディレクトリを正確に作成します
-        mkdir -p /home/runner/qmk_firmware/keyboards/keyball/keyball61
-        
-        # あなたのリポジトリの keyball61 フォルダの「中身（全ファイル）」をQMK側に展開します
-        if [ -d "keyball61" ]; then
-          cp -R keyball61/. /home/runner/qmk_firmware/keyboards/keyball/keyball61/
-        else
-          # フォールバック：直下にソースがある場合
-          cp -R * /home/runner/qmk_firmware/keyboards/keyball/keyball61/
-        fi
-
     - name: Compile Keyball61 (RP2040)
       run: |
-        cd /home/runner/qmk_firmware
-        # 正しいパス構造になったため、このコマンドでビルドが通るようになります
+        # あなたのリポジトリに最初から入っている qmk_firmware フォルダに移動します
+        cd qmk_firmware
+        
+        # リポジトリ内の独自構造に合わせてRP2040用ビルドを実行します
         qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
     - name: Upload Artifacts
@@ -50,5 +33,5 @@ jobs:
       with:
         name: Keyball61_RP2040_Firmware
         path: |
-          /home/runner/qmk_firmware/*.uf2
-          /home/runner/qmk_firmware/*.bin
+          qmk_firmware/*.uf2
+          qmk_firmware/*.bin
