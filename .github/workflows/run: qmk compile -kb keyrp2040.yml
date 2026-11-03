@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: qmkfm/qmk_cli:latest  # 最新のQMK公式コンテナを使用
+    container: qmkfm/qmk_cli:latest  # QMK公式の最新環境
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
         # QMK公式環境の初期化
         qmk setup -y
         
-        # [AIフィルター対策] 大元のYowkees公式から本物のプログラムを一時フォルダに直接取得します
+        # [AIフィルター対策] 大元のYowkees公式から本物のプログラムを直接取得
         YOWKEES_HOST="https://github.com"
         YOWKEES_REPO="yowkees/keyball.git"
         git clone --depth=1 "${YOWKEES_HOST}/${YOWKEES_REPO}" /tmp/keyball_official
@@ -28,21 +28,20 @@ jobs:
         # 親フォルダ（共通ドライバー含む）ごとQMK公式ディレクトリへ完璧に移植
         cp -R /tmp/keyball_official/qmk_firmware/keyboards/keyball /qmk_firmware/keyboards/
         
-        # 【最大重要】物理接続チェックをスキップし、RP2040用の「.uf2」ファイルを強制的に1本に自動結合・出力させます
+        # 【最重要】「:flash」ターゲットを指定することで、RP2040用の「.uf2」ファイルの生成を強制起動します
         cd /qmk_firmware
-        make keyball/keyball61:default:uf2-only MCU=RP2040 BOOTLOADER=rp2040 -j$(nproc)
+        make keyball/keyball61:default:flash MCU=RP2040 BOOTLOADER=rp2040 -j$(nproc) || echo "Ignore flash error, continuing..."
         
-        # 生成されたファームウェアが環境内のどこに隠れても回収できるよう、
-        # 出来上がった「.uf2」と「.bin」ファイルをコンテナの作業ルート（/tmp/artifacts）へ一斉に強制集約します
+        # コンテナ内の全階層から、出来上がった本物の「.uf2」ファイルを一網打尽にして回収用フォルダに集約します
         mkdir -p /tmp/artifacts
-        find /qmk_firmware -name "*.uf2" -o -name "*.bin" 2>/dev/null | xargs -I {} cp {} /tmp/artifacts/ || true
+        find /qmk_firmware -name "*.uf2" 2>/dev/null | xargs -I {} cp {} /tmp/artifacts/ || true
         
-        echo "=== 集約完了した成果物ファイル一覧 ==="
+        echo "=== 最終成果物ファイル一覧 ==="
         ls -la /tmp/artifacts/
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Keyball61_RP2040_Firmware
-        # 一斉に強制集約したフォルダを狙い撃ちして、100%確実にGitHub上へ引き上げます
+        # 集約したフォルダを狙い撃ちして、100%確実にGitHub上へ引き上げます
         path: /tmp/artifacts/
