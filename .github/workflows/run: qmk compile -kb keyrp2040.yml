@@ -18,23 +18,29 @@ jobs:
 
     - name: Install Build Dependencies
       run: |
-        # RP2040 (ARM) のコンパイルに必要なクロスコンパイラを直接インストールします
         sudo apt-get update
         sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
 
-    - name: Deploy Keyball61 Source into QMK
+    - name: Force Deploy Keyball61 Source
       run: |
-        # qmk_firmwareのキーボードディレクトリ内に keyball61 フォルダを作成します
-        mkdir -p qmk_firmware/keyboards/keyball61
+        # 同梱されているQMKファームウェア内の可能性のある2つの場所に、
+        # あなたの keyball61 フォルダの中身を強制的に両方ともコピー（配置）します。
         
-        # リポジトリのルートにある keyball61 フォルダの中身を、QMK内の正しい位置へ確実にコピーします
+        # パターン1: keyboards/keyball61/
+        mkdir -p qmk_firmware/keyboards/keyball61
         cp -R keyball61/. qmk_firmware/keyboards/keyball61/
+        
+        # パターン2: keyboards/keyball/keyball61/
+        mkdir -p qmk_firmware/keyboards/keyball/keyball61
+        cp -R keyball61/. qmk_firmware/keyboards/keyball/keyball61/
 
     - name: Compile Keyball61 (RP2040)
       run: |
         cd qmk_firmware
-        # 配置が正しく完了したため、同梱のQMKシステム上でビルドが正常に開始されます
-        make keyball61:default MCU=RP2040 BOOTLOADER=rp2040
+        
+        # どちらのターゲット名が正解でも通るように、順番にビルドを試みます。
+        # 1つ目が失敗しても、2つ目が成功すればワークフローは成功します。
+        make keyball/keyball61:default MCU=RP2040 BOOTLOADER=rp2040 || make keyball61:default MCU=RP2040 BOOTLOADER=rp2040
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
@@ -43,3 +49,5 @@ jobs:
         path: |
           qmk_firmware/*.uf2
           qmk_firmware/*.bin
+          qmk_firmware/.build/*.uf2
+          qmk_firmware/.build/*.bin
