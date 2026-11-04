@@ -14,24 +14,26 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        submodules: recursive  # ★最重要：これであなたのリポジトリ内の qmk_firmware の中身もダウンロードされます
 
     - name: Compile Keyball61 from Repository Path
       run: |
         # 1. QMK公式環境の初期化
         qmk setup -y
 
-        # 2. あなたのリポジトリの「qmk_firmware/keyboards/keyball」からデータを公式環境へ確実に同期
+        # 2. あなたのリポジトリから、公式環境のkeyboards/keyballフォルダへデータをコピー
         mkdir -p /qmk_firmware/keyboards/keyball
         cp -R ./qmk_firmware/keyboards/keyball/* /qmk_firmware/keyboards/keyball/
 
-        # 3. QMK内部のデータベースキャッシュを強制初期化して配置をシステムに認識させる
+        # 3. QMKのディレクトリに移動し、キャッシュを更新
         cd /qmk_firmware
         qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache synced"
 
-        # 4. あなたのソースコードの中身をそのまま使い、ProMicro RP2040向けのコンパイルを実行
+        # 4. ProMicro RP2040向けのコンパイルを実行
         qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
-        # 5. 生成された本物の完成ファームウェア（.uf2）を抽出して集約
+        # 5. 生成されたファームウェア（.uf2）の抽出
         mkdir -p /tmp/artifacts
         find /qmk_firmware/.build -name "*.uf2" 2>/dev/null | xargs -I {} cp {} /tmp/artifacts/ || true
 
