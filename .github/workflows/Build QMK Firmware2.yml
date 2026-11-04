@@ -1,0 +1,43 @@
+name: Build QMK Firmware2
+
+on:
+  push:
+    branches: [ main, master, yamaryu211 ]
+  pull_request:
+    branches: [ main, master, yamaryu211 ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: qmkfm/qmk_cli:latest  # QMK公式の最新コンテナ環境
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Compile Keyball61 from Repository Path
+      run: |
+        # 1. QMK公式環境の初期化
+        qmk setup -y
+
+        # 2. あなたのリポジトリにある keyball フォルダを QMK公式の keyboards フォルダへコピー
+        # （チェックアウトされたリポジトリ直下の keyball フォルダを対象にします）
+        mkdir -p /qmk_firmware/keyboards/keyball
+        cp -R ./keyball/* /qmk_firmware/keyboards/keyball/
+
+        # 3. QMKのディレクトリに移動し、キャッシュを更新
+        cd /qmk_firmware
+        qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache synced"
+
+        # 4. ProMicro RP2040向けのコンパイルを実行
+        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
+
+        # 5. 生成されたファームウェア（.uf2）の抽出
+        mkdir -p /tmp/artifacts
+        find /qmk_firmware/.build -name "*.uf2" 2>/dev/null | xargs -I {} cp {} /tmp/artifacts/ || true
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Keyball61_RP2040_Firmware
+        path: /tmp/artifacts/
