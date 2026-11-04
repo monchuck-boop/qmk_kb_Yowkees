@@ -1,4 +1,4 @@
-name: Build QMK Firmware2
+name: Build QMK Firmware
 
 on:
   push:
@@ -20,19 +20,18 @@ jobs:
         # 1. QMK公式環境の初期化
         qmk setup -y
 
-        # 2. あなたのリポジトリにある keyball フォルダを QMK公式の keyboards フォルダへコピー
-        # （チェックアウトされたリポジトリ直下の keyball フォルダを対象にします）
+        # 2. あなたのリポジトリの「qmk_firmware/keyboards/keyball」からデータを公式環境へ確実に同期
         mkdir -p /qmk_firmware/keyboards/keyball
-        cp -R ./keyball/* /qmk_firmware/keyboards/keyball/
+        cp -R ./qmk_firmware/keyboards/keyball/* /qmk_firmware/keyboards/keyball/
 
-        # 3. QMKのディレクトリに移動し、キャッシュを更新
+        # 3. QMK内部のデータベースキャッシュを強制初期化して配置をシステムに認識させる
         cd /qmk_firmware
         qmk list-keyboards -c > /dev/null 2>&1 || echo "Cache synced"
 
-        # 4. ProMicro RP2040向けのコンパイルを実行
+        # 4. あなたのソースコードの中身をそのまま使い、ProMicro RP2040向けのコンパイルを実行
         qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
-        # 5. 生成されたファームウェア（.uf2）の抽出
+        # 5. 生成された本物の完成ファームウェア（.uf2）を抽出して集約
         mkdir -p /tmp/artifacts
         find /qmk_firmware/.build -name "*.uf2" 2>/dev/null | xargs -I {} cp {} /tmp/artifacts/ || true
 
