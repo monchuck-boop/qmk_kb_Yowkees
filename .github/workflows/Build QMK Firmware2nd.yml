@@ -1,4 +1,4 @@
-name: Build QMK Firmware
+name: Build QMK Firmware　2nd
 
 on:
   push:
