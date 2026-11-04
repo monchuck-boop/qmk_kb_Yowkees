@@ -19,16 +19,16 @@ jobs:
 
     - name: Compile Keyball61
       run: |
-        # 1. QMK公式環境の初期化（これにより /qmk_firmware が生成されます）
+        # 1. QMK公式環境の初期化（これにより公式データが /qmk_firmware に展開されます）
         qmk setup -y
 
-        # 2. あなたが整理してくれた keyball フォルダを、QMK公式環境の配置場所へ強制コピー
-        #    （Actionsがチェックアウトしたワークスペース内の実データを直接狙い撃ちします）
+        # 2. あなたのリポジトリにある keyball61 フォルダを公式の keyboards 配下へ強制的にコピー（上書き）します
         mkdir -p /qmk_firmware/keyboards/keyball
-        cp -R $GITHUB_WORKSPACE/qmk_firmware/keyboards/keyball/* /qmk_firmware/keyboards/keyball/
+        cp -R $GITHUB_WORKSPACE/qmk_firmware/keyboards/keyball/keyball61 /qmk_firmware/keyboards/keyball/
 
-        # 3. コピーが成功したか確認（デバッグ用）
-        ls -la /qmk_firmware/keyboards/keyball/
+        # 3. コピーが正しく行われたかフォルダの中身を確認（デバッグ用）
+        echo "=== コピー先のフォルダ確認 ==="
+        ls -la /qmk_firmware/keyboards/keyball/keyball61
 
         # 4. QMK公式環境のディレクトリに移動
         cd /qmk_firmware
