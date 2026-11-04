@@ -1,0 +1,44 @@
+name: Build mv‗folder
+
+on:
+  push:
+    branches: [ main, master, yamaryu211 ]
+  pull_request:
+    branches: [ main, master, yamaryu211 ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: qmkfm/qmk_cli:latest  # QMK公式の最新コンテナ環境
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Compile Keyball61
+      run: |
+        # 1. QMK公式環境の初期化（これでコンテナ内に本家QMKが用意されます）
+        qmk setup -y
+
+        # 2. 【ここが移動コマンド！】
+        # あなたのリポジトリの中にある keyball61 フォルダを、QMK公式が認識できる場所に「移動」させます
+        mkdir -p /qmk_firmware/keyboards/keyball
+        mv $GITHUB_WORKSPACE/qmk_firmware/keyboards/keyball/keyball61 /qmk_firmware/keyboards/keyball/
+
+        # 3. QMK公式の場所に移動
+        cd /qmk_firmware
+
+        # 4. コンパイルを実行
+        qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
+
+        # 5. 生成されたファームウェア（.uf2）を抽出
+        mkdir -p /tmp/artifacts
+        find .build -name "*.uf2" 2>/dev/null | xargs -I {} cp {} /tmp/artifacts/ || true
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Keyball61_RP2040_Firmware
+        path: /tmp/artifacts/
