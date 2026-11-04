@@ -15,20 +15,28 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        submodules: recursive  # あなたのリポジトリにある「qmk_firmware」の中身をすべて読み込みます
+        submodules: recursive
 
     - name: Compile Keyball61
       run: |
-        # 1. QMK公式環境の初期化
+        # 1. QMK公式環境の初期化（これにより /qmk_firmware が生成されます）
         qmk setup -y
 
-        # 2. あなたのリポジトリの「qmk_firmware」がある場所に移動
-        cd qmk_firmware
+        # 2. あなたが整理してくれた keyball フォルダを、QMK公式環境の配置場所へ強制コピー
+        #    （Actionsがチェックアウトしたワークスペース内の実データを直接狙い撃ちします）
+        mkdir -p /qmk_firmware/keyboards/keyball
+        cp -R $GITHUB_WORKSPACE/qmk_firmware/keyboards/keyball/* /qmk_firmware/keyboards/keyball/
 
-        # 3. ProMicro RP2040向けのコンパイルを実行
+        # 3. コピーが成功したか確認（デバッグ用）
+        ls -la /qmk_firmware/keyboards/keyball/
+
+        # 4. QMK公式環境のディレクトリに移動
+        cd /qmk_firmware
+
+        # 5. ProMicro RP2040向けのコンパイルを実行
         qmk compile -kb keyball/keyball61 -km default -e MCU=RP2040 -e BOOTLOADER=rp2040
 
-        # 4. 生成されたファームウェア（.uf2）を抽出して集約
+        # 6. 生成されたファームウェア（.uf2）を抽出して集約
         mkdir -p /tmp/artifacts
         find .build -name "*.uf2" 2>/dev/null | xargs -I {} cp {} /tmp/artifacts/ || true
 
